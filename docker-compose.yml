@@ -1,0 +1,74 @@
+version: '3'
+services:
+  media-discovery:
+    image: racoonmediaserver/media-discovery:latest
+    restart: always
+    container_name: media-discovery
+    environment:
+      - RMS_DATABASE_HOST=db
+      - RMS_DATABASE_DATABASE=rms_media_discovery
+      - RMS_DATABASE_USER=postgres
+      - RMS_DATABASE_PASSWORD=qweasd123
+      - RMS_HTTP_HOST=0.0.0.0
+      - MICRO_REGISTRY=mdns
+    ports:
+      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:2112:2112"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - db
+
+  users:
+    image: racoonmediaserver/users:latest
+    restart: always
+    container_name: users
+    environment:
+      - RMS_DATABASE_HOST=db
+      - RMS_DATABASE_DATABASE=rms_users
+      - RMS_DATABASE_USER=postgres
+      - RMS_DATABASE_PASSWORD=qweasd123
+      - RMS_HTTP_HOST=0.0.0.0
+      - MICRO_REGISTRY=mdns
+    ports:
+      - "127.0.0.1:8082:8080"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:alpine
+    restart: always
+    container_name: db
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d/
+      - ./db:/var/lib/postgresql/data
+    environment:
+      - "POSTGRES_MULTIPLE_DATABASES=rms_users,rms_users: rms_media_discovery,rms_media_discovery"
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=qweasd123
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "127.0.0.1:9000:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+    command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
+    ports:
+      - "3000:3000"
+    links:
+      - prometheus
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 30 --label-enable

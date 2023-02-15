@@ -1,5 +1,14 @@
 version: '3'
 services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./nginx/reverse-proxy.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - 80:80
+      - 443:443
+
   media-discovery:
     image: racoonmediaserver/media-discovery:latest
     restart: always
@@ -12,7 +21,6 @@ services:
       - RMS_HTTP_HOST=0.0.0.0
       - MICRO_REGISTRY=mdns
     ports:
-      - "127.0.0.1:8081:8080"
       - "127.0.0.1:2112:2112"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
@@ -30,8 +38,6 @@ services:
       - RMS_DATABASE_PASSWORD=qweasd123
       - RMS_HTTP_HOST=0.0.0.0
       - MICRO_REGISTRY=mdns
-    ports:
-      - "127.0.0.1:8082:8080"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:

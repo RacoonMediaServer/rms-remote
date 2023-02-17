@@ -26,6 +26,7 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - db
+      - users
 
   users:
     image: racoonmediaserver/users:latest
@@ -43,6 +44,23 @@ services:
     depends_on:
       - db
 
+  bot:
+    image: racoonmediaserver/bot-server:latest
+    restart: always
+    container_name: bot
+    environment:
+      - RMS_DATABASE_HOST=db
+      - RMS_DATABASE_DATABASE=rms_bot_server
+      - RMS_DATABASE_USER=postgres
+      - RMS_DATABASE_PASSWORD=qweasd123
+      - RMS_BOT_TOKEN=
+      - MICRO_REGISTRY=mdns
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - db
+      - users
+
   db:
     image: postgres:alpine
     restart: always
@@ -51,7 +69,7 @@ services:
       - ./postgres:/docker-entrypoint-initdb.d/
       - ./db:/var/lib/postgresql/data
     environment:
-      - "POSTGRES_MULTIPLE_DATABASES=rms_users,rms_users: rms_media_discovery,rms_media_discovery"
+      - "POSTGRES_MULTIPLE_DATABASES=rms_users,rms_users: rms_media_discovery,rms_media_discovery: rms_bot_server:rms_bot_server"
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=qweasd123
 

@@ -1,14 +1,17 @@
 version: '3'
 services:
-  nginx:
-    image: nginx:latest
-    container_name: nginx
+  db:
+    image: postgres:alpine
+    restart: always
+    container_name: db
     volumes:
-      - ./nginx/reverse-proxy.conf:/etc/nginx/conf.d/default.conf
-    ports:
-      - 80:80
-      - 443:443
-
+      - ./postgres:/docker-entrypoint-initdb.d/
+      - ./db:/var/lib/postgresql/data
+    environment:
+      - "POSTGRES_MULTIPLE_DATABASES=rms_users,rms_users: rms_media_discovery,rms_media_discovery: rms_bot_server,rms_bot_server"
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=qweasd123
+      
   media-discovery:
     image: racoonmediaserver/media-discovery:latest
     restart: always
@@ -19,9 +22,8 @@ services:
       - RMS_DATABASE_USER=postgres
       - RMS_DATABASE_PASSWORD=qweasd123
       - RMS_HTTP_HOST=0.0.0.0
+      - RMS_MONITOR_HOST=0.0.0.0
       - MICRO_REGISTRY=mdns
-    ports:
-      - "127.0.0.1:2112:2112"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
@@ -38,6 +40,7 @@ services:
       - RMS_DATABASE_USER=postgres
       - RMS_DATABASE_PASSWORD=qweasd123
       - RMS_HTTP_HOST=0.0.0.0
+      - RMS_MONITOR_HOST=0.0.0.0
       - MICRO_REGISTRY=mdns
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
@@ -54,24 +57,26 @@ services:
       - RMS_DATABASE_USER=postgres
       - RMS_DATABASE_PASSWORD=qweasd123
       - RMS_BOT_TOKEN=
+      - RMS_HTTP_HOST=0.0.0.0
+      - RMS_MONITOR_HOST=0.0.0.0
       - MICRO_REGISTRY=mdns
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - db
       - users
-
-  db:
-    image: postgres:alpine
-    restart: always
-    container_name: db
+  nginx:
+    image: nginx:latest
+    container_name: nginx
     volumes:
-      - ./postgres:/docker-entrypoint-initdb.d/
-      - ./db:/var/lib/postgresql/data
-    environment:
-      - "POSTGRES_MULTIPLE_DATABASES=rms_users,rms_users: rms_media_discovery,rms_media_discovery: rms_bot_server:rms_bot_server"
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=qweasd123
+      - ./nginx/reverse-proxy.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - media-discovery
+      - users
+      - bot
 
   prometheus:
     image: prom/prometheus:latest
@@ -96,3 +101,4 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 30 --label-enable
+

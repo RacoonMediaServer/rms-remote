@@ -8,3 +8,5 @@ scrape_configs:
     static_configs:
       - targets:
           - 'media-discovery:2112'
+          - 'users:2112'
+          - 'bot:2112'

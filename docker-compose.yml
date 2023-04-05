@@ -65,6 +65,24 @@ services:
     depends_on:
       - db
       - users
+
+  post:
+    image: racoonmediaserver/post:latest
+    restart: always
+    container_name: post
+    environment:
+      - RMS_HTTP_HOST=0.0.0.0
+      - RMS_MONITOR_HOST=0.0.0.0
+      - MICRO_REGISTRY=mdns
+      - RMS_DELIVERY_SMS_ACCOUNT=
+      - RMS_DELIVERY_SMS_KEY=
+      - RMS_DELIVERY_EMAIL_USER=
+      - RMS_DELIVERY_EMAIL_PASSWORD=
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - users
+
   nginx:
     image: nginx:latest
     container_name: nginx

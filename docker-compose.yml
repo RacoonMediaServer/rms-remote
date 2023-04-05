@@ -95,6 +95,7 @@ services:
       - media-discovery
       - users
       - bot
+      - post
 
   prometheus:
     image: prom/prometheus:latest

@@ -1,29 +1,42 @@
 version: '3'
 services:
   db:
-    image: postgres:alpine
+    image: postgres:17.0-alpine3.20
     restart: always
     container_name: db
     volumes:
       - ./postgres:/docker-entrypoint-initdb.d/
-      - ./db:/var/lib/postgresql/data
+      - database_volume:/var/lib/postgresql/data
     environment:
       - "POSTGRES_MULTIPLE_DATABASES=rms_users,rms_users: rms_media_discovery,rms_media_discovery: rms_bot_server,rms_bot_server"
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=qweasd123
+
+  etcd:
+    image: bitnami/etcd:3.5.16
+    container_name: etcd
+    restart: always
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "127.0.0.1:2379:2379"
+      - "127.0.0.1:2380:2380"
       
   media-discovery:
     image: racoonmediaserver/media-discovery:latest
     restart: always
     container_name: media-discovery
     environment:
+      - RMS_DEBUG_VERBOSE=true
       - RMS_DATABASE_HOST=db
       - RMS_DATABASE_DATABASE=rms_media_discovery
       - RMS_DATABASE_USER=postgres
       - RMS_DATABASE_PASSWORD=qweasd123
       - RMS_HTTP_HOST=0.0.0.0
-      - RMS_MONITOR_HOST=0.0.0.0
-      - MICRO_REGISTRY=mdns
+      - RMS_DEBUG_MONITOR_HOST=0.0.0.0
+      - MICRO_REGISTRY=etcd
+      - MICRO_REGISTRY_ADDRESS=etcd:2379
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
@@ -41,7 +54,8 @@ services:
       - RMS_DATABASE_PASSWORD=qweasd123
       - RMS_HTTP_HOST=0.0.0.0
       - RMS_MONITOR_HOST=0.0.0.0
-      - MICRO_REGISTRY=mdns
+      - MICRO_REGISTRY=etcd
+      - MICRO_REGISTRY_ADDRESS=etcd:2379
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
@@ -56,10 +70,11 @@ services:
       - RMS_DATABASE_DATABASE=rms_bot_server
       - RMS_DATABASE_USER=postgres
       - RMS_DATABASE_PASSWORD=qweasd123
-      - RMS_BOT_TOKEN=
+      - RMS_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - RMS_HTTP_HOST=0.0.0.0
       - RMS_MONITOR_HOST=0.0.0.0
-      - MICRO_REGISTRY=mdns
+      - MICRO_REGISTRY=etcd
+      - MICRO_REGISTRY_ADDRESS=etcd:2379
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
@@ -73,24 +88,25 @@ services:
     environment:
       - RMS_HTTP_HOST=0.0.0.0
       - RMS_MONITOR_HOST=0.0.0.0
-      - MICRO_REGISTRY=mdns
       - RMS_DELIVERY_SMS_ACCOUNT=
       - RMS_DELIVERY_SMS_KEY=
       - RMS_DELIVERY_EMAIL_USER=
       - RMS_DELIVERY_EMAIL_PASSWORD=
+      - MICRO_REGISTRY=etcd
+      - MICRO_REGISTRY_ADDRESS=etcd:2379
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - users
 
   nginx:
-    image: nginx:latest
+    image: nginx:1.27.2-alpine
     container_name: nginx
+    restart: always
     volumes:
       - ./nginx/reverse-proxy.conf:/etc/nginx/conf.d/default.conf
     ports:
-      - 80:80
-      - 443:443
+      - 127.0.0.1:8080:80
     depends_on:
       - media-discovery
       - users
@@ -98,7 +114,7 @@ services:
       - post
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1
     ports:
       - "127.0.0.1:9000:9090"
     volumes:
@@ -106,7 +122,7 @@ services:
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.2
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
@@ -116,8 +132,11 @@ services:
       - prometheus
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:1.7.1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 30 --label-enable
+
+volumes:
+  database_volume:
 

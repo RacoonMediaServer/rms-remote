@@ -99,6 +99,17 @@ services:
     depends_on:
       - users
 
+  mirror:
+    image: racoonmediaserver/mirror:latest
+    restart: always
+    container_name: mirror
+    environment:
+      - RMS_HTTP_HOST=0.0.0.0
+      - MICRO_REGISTRY=etcd
+      - MICRO_REGISTRY_ADDRESS=etcd:2379
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
   nginx:
     image: nginx:1.27.2-alpine
     container_name: nginx
